@@ -125,13 +125,20 @@ def send_bot_welcome(username):
 @app.route('/')
 def index():
     conn = get_db_connection()
-    search_query = request.args.get('q', '')
+    search_query = request.args.get('q', '').strip()
     
     if search_query:
+        # Ищем игры по частичному совпадению
         games = conn.execute('SELECT * FROM games WHERE name LIKE ? ORDER BY name', (f'%{search_query}%',)).fetchall()
+        
+        # Увеличиваем счетчик популярности для всех игр, которые подошли под запрос
+        for g in games:
+            conn.execute('UPDATE games SET search_count = search_count + 1 WHERE id = ?', (g['id'],))
+        conn.commit()
     else:
         games = conn.execute('SELECT * FROM games ORDER BY name').fetchall()
     
+    # Группировка игр по алфавиту
     grouped_games = {}
     for game in games:
         let = game['letter'].upper()
@@ -139,16 +146,21 @@ def index():
             grouped_games[let] = []
         grouped_games[let].append(game)
         
+    # Считаем общее число пользователей
     total_users_row = conn.execute('SELECT COUNT(*) as cnt FROM users').fetchone()
     total_users = total_users_row['cnt'] if total_users_row else 0
     
+    # Находим реальную самую популярную игру по количеству запросов
+    top_game_row = conn.execute('SELECT name FROM games ORDER BY search_count DESC, id ASC LIMIT 1').fetchone()
+    popular_game_name = top_game_row['name'] if top_game_row and top_game_row['name'] else 'Пока нет запросов'
+    
     stats = {
         'total_users': total_users,
-        'popular_game': 'Counter-Strike 2',
+        'popular_game': popular_game_name,
         'user_reg_date': session.get('user_reg_date', 'Не авторизован')
     }
     
-    recent_games = conn.execute('SELECT * FROM games LIMIT 3').fetchall()
+    recent_games = conn.execute('SELECT * FROM games ORDER BY search_count DESC LIMIT 3').fetchall()
     conn.close()
     
     current_theme = session.get('theme', 'light')
