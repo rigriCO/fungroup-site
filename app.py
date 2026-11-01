@@ -14,18 +14,19 @@ def init_db():
     conn = sqlite3.connect('fungroup.db')
     cursor = conn.cursor()
     
-    # Таблица игр
+    # Таблица игр (добавили колонку search_count для подсчета популярности)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS games (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             slug TEXT UNIQUE NOT NULL,
             letter TEXT NOT NULL,
-            icon_url TEXT
+            icon_url TEXT,
+            search_count INTEGER DEFAULT 0
         )
     ''')
     
-    # Таблица пользователей
+    # Остальные таблицы (users, profiles, chats, messages) остаются без изменений...
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +37,6 @@ def init_db():
         )
     ''')
     
-    # Таблица анкет
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,7 +50,6 @@ def init_db():
         )
     ''')
     
-    # Таблица чатов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS chats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,7 +59,6 @@ def init_db():
         )
     ''')
     
-    # Таблица сообщений
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +70,6 @@ def init_db():
         )
     ''')
     
-    # Заполнение играми включая новые (Terraria, Garry's mod, Soul Knight, Lethal company)
     cursor.execute('SELECT COUNT(*) FROM games')
     if cursor.fetchone()[0] == 0:
         games_data = [
@@ -95,29 +92,7 @@ def init_db():
             ('Standoff 2', 'standoff-2', 'S', '/static/images/standoff2.png'),
             ('Terraria', 'terraria', 'T', '/static/images/terraria.png')
         ]
-        cursor.executemany('INSERT INTO games (name, slug, letter, icon_url) VALUES (?, ?, ?, ?)', games_data)
-        
-        # Получаем ID новых игр для добавления стартовых анкет
-        # Находим ID по их slug
-        cursor.execute("SELECT id FROM games WHERE slug = 'garrys-mod'")
-        gmod_id = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT id FROM games WHERE slug = 'lethal-company'")
-        lethal_id = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT id FROM games WHERE slug = 'soul-knight'")
-        sk_id = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT id FROM games WHERE slug = 'terraria'")
-        terraria_id = cursor.fetchone()[0]
-
-        profiles_data = [
-            (gmod_id, 'Ищем людей для игры в DarkRP', 'GModFan', '1000+ часов', 'Строим базу, играем по вечерам.', 'Клан'),
-            (lethal_id, 'Иду в сквад за ценным ломом', 'CompanyEmployee', 'Профессионал', 'Знаю все лунные карты, не боюсь собак.', 'Пати'),
-            (sk_id, 'Ищу напарника на прохождение Boss Rush', 'KnightHero', 'Макс. прокачка', 'Играем на кошмаре.', 'Дуэт'),
-            (terraria_id, 'Создаем новый мир на эксперте', 'Terrarian', 'Опытный строитель', 'Убиваем Глаза Ктулху, ищу мага/стрелка.', 'Бесплатно')
-        ]
-        cursor.executemany('INSERT INTO profiles (game_id, title, username, rank, description, price_or_type) VALUES (?, ?, ?, ?, ?, ?)', profiles_data)
+        cursor.executemany('INSERT INTO games (name, slug, letter, icon_url, search_count) VALUES (?, ?, ?, ?, 0)', games_data)
         
     conn.commit()
     conn.close()
