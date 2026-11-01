@@ -366,7 +366,8 @@ def settings():
     notifications = session.get('notifications', True)
     return render_template('settings.html', theme=current_theme, notifications=notifications)
 
+with app.app_context():
+    init_db()
+
 if __name__ == '__main__':
-    with app.app_context():
-        init_db()
     app.run(debug=True)
