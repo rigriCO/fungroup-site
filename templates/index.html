@@ -21,13 +21,13 @@
 
 <div class="search-section">
     <form method="GET" action="/">
-        <label style="font-weight: bold; display: block; margin-bottom: 6px;">Поиск игр:</label>
-        <input type="text" name="q" class="search-input" placeholder="Впишите игру..." value="{{ search_query }}">
+        <label style="font-weight: bold; display: block; margin-bottom: 6px;">{{ t.search_games }}</label>
+        <input type="text" name="q" class="search-input" placeholder="{{ t.search_placeholder }}" value="{{ search_query }}">
     </form>
 </div>
 
 <div class="recent-section">
-    <div class="recent-title">Последний поиск:</div>
+    <div class="recent-title">{{ t.recent_search }}</div>
     {% for game in recent_games %}
     <a href="/game/{{ game.slug }}" class="game-badge">
         <img src="{{ game.icon_url }}" alt="">
@@ -36,7 +36,7 @@
     {% endfor %}
 </div>
 
-<h3 style="margin-bottom: 20px;">Игры в алфавитном порядке</h3>
+<h3 style="margin-bottom: 20px;">{{ t.alphabet_title }}</h3>
 
 {% for letter, games in grouped_games.items() %}
 <div class="alphabet-row">
@@ -53,24 +53,24 @@
     </div>
 </div>
 {% else %}
-<p>Игры не найдены.</p>
+<p>{{ t.no_games }}</p>
 {% endfor %}
 
 {% endblock %}
 
 {% block sidebar %}
 <div class="stat-card">
-    <h4>Зарегистрировано аккаунтов</h4>
+    <h4>{{ t.stats_users }}</h4>
     <div class="stat-value">{{ stats.total_users }}</div>
 </div>
 
 <div class="stat-card">
-    <h4>Самая популярная игра по поискам</h4>
+    <h4>{{ t.stats_popular }}</h4>
     <div class="stat-value" style="color: #ff9800;">{{ stats.popular_game }}</div>
 </div>
 
 <div class="stat-card">
-    <h4>Дата регистрации вашего аккаунта</h4>
+    <h4>{{ t.stats_reg_date }}</h4>
     <div class="stat-value" style="font-size: 15px; opacity: 0.8;">{{ stats.user_reg_date }}</div>
 </div>
 {% endblock %}
