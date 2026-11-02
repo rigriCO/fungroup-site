@@ -1,9 +1,179 @@
 from flask import Flask, render_template, request, abort, redirect, url_for, session, flash
 import sqlite3
 import datetime
+import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'fungroup_secret_key_change_me'
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+
+# Полный словарь локализации для интерфейса (RU, EN, UK)
+TRANSLATIONS = {
+    'ru': {
+        'logo': 'FunGr😊up',
+        'messages': 'СООБЩЕНИЯ',
+        'create_ad': '+ СОЗДАТЬ АНКЕТУ',
+        'login': 'Войти',
+        'register': 'Регистрация',
+        'settings': 'Настройки',
+        'logout': 'Выйти',
+        'search_games': 'Поиск игр:',
+        'search_placeholder': 'Впишите игру...',
+        'recent_search': 'Последний поиск:',
+        'alphabet_title': 'Игры в алфавитном порядке',
+        'stats_users': 'Зарегистрировано аккаунтов',
+        'stats_popular': 'Самая популярная игра по поискам',
+        'stats_reg_date': 'Дата регистрации вашего аккаунта',
+        'no_games': 'Игры не найдены.',
+        'publish_ad_btn': 'Выложить своё объявление',
+        'search_desc': 'Поиск по описанию 🔍',
+        'search_desc_placeholder': 'Введите ключевые слова...',
+        'search_desc_hint': 'поиск работает по ключевым словам',
+        'no_profiles': 'Пока нет созданных объявлений для этой игры. Станьте первыми, кто выложит своё объявление!',
+        'category': 'Категория игры',
+        'create_ad_title': 'Меню создания объявления игрока',
+        'your_game': 'Ваша игра:',
+        'select_game': 'Выберите игру...',
+        'about_self': 'Информация о себе:',
+        'about_placeholder': 'Введите статистику, прайм-тайм, ранг и кого ищете...',
+        'photo_label': 'Фото вашего профиля / достижений (необязательно):',
+        'photo_drag': 'Сюда надо перетащить фото или нажмите для выбора',
+        'add_photo': '+ Добавить фото',
+        'publish_btn': 'Опубликовать объявление',
+        'account_settings': 'Настройки аккаунта',
+        'site_theme': 'Тема оформления сайта:',
+        'light_theme': 'Светлая тема ☀️',
+        'dark_theme': 'Темная тема 🌙',
+        'sound_notifs': 'Включить звуковые уведомления о сообщениях',
+        'save_settings': 'Сохранить настройки',
+        'profile_status': 'Статус профиля',
+        'active': 'Активен ✅',
+        'back_to_main': '← На главную',
+        # Раздел сообщений
+        'messages_title': 'Сообщения',
+        'search_chats': 'Поиск по никнеймам...',
+        'no_chats': 'У вас пока нет активных чатов.',
+        'chat_with': 'Чат с пользователем:',
+        'type_message': 'Введите текст ...',
+        'send': 'Отправить',
+        'empty_chat_select': 'Выберите чат слева, чтобы начать общение, или найдите пользователя по никнейму.',
+    },
+    'en': {
+        'logo': 'FunGr😊up',
+        'messages': 'MESSAGES',
+        'create_ad': '+ CREATE PROFILE',
+        'login': 'Login',
+        'register': 'Register',
+        'settings': 'Settings',
+        'logout': 'Logout',
+        'search_games': 'Search games:',
+        'search_placeholder': 'Type a game...',
+        'recent_search': 'Recent searches:',
+        'alphabet_title': 'Games in alphabetical order',
+        'stats_users': 'Registered accounts',
+        'stats_popular': 'Most popular game by searches',
+        'stats_reg_date': 'Account registration date',
+        'no_games': 'No games found.',
+        'publish_ad_btn': 'Create listing',
+        'search_desc': 'Search by description 🔍',
+        'search_desc_placeholder': 'Type keywords...',
+        'search_desc_hint': 'search works by keywords',
+        'no_profiles': 'No listings created yet for this game. Be the first to create one!',
+        'category': 'Game category',
+        'create_ad_title': 'Player Listing Creation Menu',
+        'your_game': 'Your game:',
+        'select_game': 'Select game...',
+        'about_self': 'About yourself:',
+        'about_placeholder': 'Enter stats, prime time, rank and who you are looking for...',
+        'photo_label': 'Profile / achievement photo (optional):',
+        'photo_drag': 'Drag photo here or click to select',
+        'add_photo': '+ Add photo',
+        'publish_btn': 'Publish listing',
+        'account_settings': 'Account Settings',
+        'site_theme': 'Site theme:',
+        'light_theme': 'Light theme ☀️',
+        'dark_theme': 'Dark theme 🌙',
+        'sound_notifs': 'Enable sound notifications for messages',
+        'save_settings': 'Save settings',
+        'profile_status': 'Profile status',
+        'active': 'Active ✅',
+        'back_to_main': '← Main page',
+        # Раздел сообщений
+        'messages_title': 'Messages',
+        'search_chats': 'Search by usernames...',
+        'no_chats': 'You have no active chats yet.',
+        'chat_with': 'Chat with user:',
+        'type_message': 'Type a message ...',
+        'send': 'Send',
+        'empty_chat_select': 'Select a chat on the left to start messaging, or search for a user by username.',
+    },
+    'uk': {
+        'logo': 'FunGr😊up',
+        'messages': 'ПОВІДОМЛЕННЯ',
+        'create_ad': '+ СТВОРИТИ АНКЕТУ',
+        'login': 'Увійти',
+        'register': 'Реєстрація',
+        'settings': 'Налаштування',
+        'logout': 'Вийти',
+        'search_games': 'Пошук ігор:',
+        'search_placeholder': 'Введіть гру...',
+        'recent_search': 'Останній пошук:',
+        'alphabet_title': 'Ігри в алфавітному порядку',
+        'stats_users': 'Зареєстровано акаунтів',
+        'stats_popular': 'Найпопулярніша гра за пошуками',
+        'stats_reg_date': 'Дата реєстрації вашого акаунта',
+        'no_games': 'Ігор не знайдено.',
+        'publish_ad_btn': 'Створити оголошення',
+        'search_desc': 'Пошук за описом 🔍',
+        'search_desc_placeholder': 'Введіть ключові слова...',
+        'search_desc_hint': 'пошук працює за ключовими словами',
+        'no_profiles': 'Поки немає створених оголошень для цієї гри. Станьте першими, хто опублікує оголошення!',
+        'category': 'Категорія гри',
+        'create_ad_title': 'Меню створення оголошення гравця',
+        'your_game': 'Ваша гра:',
+        'select_game': 'Виберіть гру...',
+        'about_self': 'Інформація про себе:',
+        'about_placeholder': 'Введіть статистику, прайм-тайм, ранг та кого шукаєте...',
+        'photo_label': 'Фото вашого профілю / досягнень (необов’язково):',
+        'photo_drag': 'Сюди треба перетягнути фото або натисніть для вибору',
+        'add_photo': '+ Додати фото',
+        'publish_btn': 'Опублікувати оголошення',
+        'account_settings': 'Налаштування акаунта',
+        'site_theme': 'Тема оформлення сайту:',
+        'light_theme': 'Світла тема ☀️',
+        'dark_theme': 'Темна тема 🌙',
+        'sound_notifs': 'Увімкнути звукові сповіщення про повідомлення',
+        'save_settings': 'Зберегти налаштування',
+        'profile_status': 'Статус профілю',
+        'active': 'Активний ✅',
+        'back_to_main': '← На головну',
+        # Раздел сообщений
+        'messages_title': 'Повідомлення',
+        'search_chats': 'Пошук за нікнеймами...',
+        'no_chats': 'У вас поки немає активних чатів.',
+        'chat_with': 'Чат з користувачем:',
+        'type_message': 'Введіть текст ...',
+        'send': 'Надіслати',
+        'empty_chat_select': 'Виберіть чат ліворуч, щоб почати спілкування, або знайдіть користувача за нікнеймом.',
+    }
+}
+
+@app.context_processor
+def inject_lang():
+    lang = session.get('lang', 'ru')
+    if lang not in TRANSLATIONS:
+        lang = 'ru'
+    return {
+        't': TRANSLATIONS[lang],
+        'current_lang': lang
+    }
+
+@app.route('/set_language/<lang>')
+def set_language(lang):
+    if lang in ['ru', 'en', 'uk']:
+        session['lang'] = lang
+    return redirect(request.referrer or url_for('index'))
 
 def get_db_connection():
     conn = sqlite3.connect('fungroup.db')
@@ -14,7 +184,6 @@ def init_db():
     conn = sqlite3.connect('fungroup.db')
     cursor = conn.cursor()
     
-    # Таблица игр (добавили колонку search_count для подсчета популярности)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS games (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,7 +195,6 @@ def init_db():
         )
     ''')
     
-    # Остальные таблицы (users, profiles, chats, messages) остаются без изменений...
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,11 +209,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             game_id INTEGER,
-            title TEXT NOT NULL,
             username TEXT NOT NULL,
-            rank TEXT,
-            description TEXT,
-            price_or_type TEXT,
+            description TEXT NOT NULL,
+            image_path TEXT,
             FOREIGN KEY (game_id) REFERENCES games (id)
         )
     ''')
@@ -100,7 +266,6 @@ def init_db():
 def send_bot_welcome(username):
     conn = get_db_connection()
     bot_name = "FunGroup bot"
-    
     chat = conn.execute('SELECT * FROM chats WHERE (user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?)', 
                         (username, bot_name, bot_name, username)).fetchone()
     
@@ -128,17 +293,13 @@ def index():
     search_query = request.args.get('q', '').strip()
     
     if search_query:
-        # Ищем игры по частичному совпадению
         games = conn.execute('SELECT * FROM games WHERE name LIKE ? ORDER BY name', (f'%{search_query}%',)).fetchall()
-        
-        # Увеличиваем счетчик популярности для всех игр, которые подошли под запрос
         for g in games:
             conn.execute('UPDATE games SET search_count = search_count + 1 WHERE id = ?', (g['id'],))
         conn.commit()
     else:
         games = conn.execute('SELECT * FROM games ORDER BY name').fetchall()
     
-    # Группировка игр по алфавиту
     grouped_games = {}
     for game in games:
         let = game['letter'].upper()
@@ -146,11 +307,9 @@ def index():
             grouped_games[let] = []
         grouped_games[let].append(game)
         
-    # Считаем общее число пользователей
     total_users_row = conn.execute('SELECT COUNT(*) as cnt FROM users').fetchone()
     total_users = total_users_row['cnt'] if total_users_row else 0
     
-    # Находим реальную самую популярную игру по количеству запросов
     top_game_row = conn.execute('SELECT name FROM games ORDER BY search_count DESC, id ASC LIMIT 1').fetchone()
     popular_game_name = top_game_row['name'] if top_game_row and top_game_row['name'] else 'Пока нет запросов'
     
@@ -164,36 +323,90 @@ def index():
     conn.close()
     
     current_theme = session.get('theme', 'light')
-    logged_in_user = session.get('username')
-    
-    return render_template('index.html', grouped_games=grouped_games, stats=stats, recent_games=recent_games, search_query=search_query, theme=current_theme, logged_in_user=logged_in_user)
+    return render_template('index.html', grouped_games=grouped_games, stats=stats, recent_games=recent_games, search_query=search_query, theme=current_theme)
 
-# Страница конкретной игры со списком анкет
 @app.route('/game/<slug>')
 def game_profiles(slug):
     conn = get_db_connection()
     game = conn.execute('SELECT * FROM games WHERE slug = ?', (slug,)).fetchone()
     if game is None:
         abort(404)
-    profiles = conn.execute('SELECT * FROM profiles WHERE game_id = ?', (game['id'],)).fetchall()
-    conn.close()
-    
-    current_theme = session.get('theme', 'light')
-    logged_in_user = session.get('username')
-    return render_template('game_profile.html', game=game, profiles=profiles, theme=current_theme, logged_in_user=logged_in_user)
-
-# Подробная страница конкретной анкеты
-@app.route('/profile/<int:profile_id>')
-def profile_detail(profile_id):
-    conn = get_db_connection()
-    profile = conn.execute('SELECT p.*, g.name as game_name FROM profiles p JOIN games g ON p.game_id = g.id WHERE p.id = ?', (profile_id,)).fetchone()
-    conn.close()
-    if profile is None:
-        abort(404)
         
+    search_query = request.args.get('q', '').strip()
+    if search_query:
+        profiles = conn.execute('SELECT * FROM profiles WHERE game_id = ? AND description LIKE ?', (game['id'], f'%{search_query}%')).fetchall()
+    else:
+        profiles = conn.execute('SELECT * FROM profiles WHERE game_id = ?', (game['id'],)).fetchall()
+        
+    conn.close()
     current_theme = session.get('theme', 'light')
-    logged_in_user = session.get('username')
-    return render_template('profile_detail.html', profile=profile, theme=current_theme, logged_in_user=logged_in_user)
+    return render_template('game_profile.html', game=game, profiles=profiles, search_query=search_query, theme=current_theme)
+
+@app.route('/create_profile', methods=['GET', 'POST'])
+def create_profile():
+    username = session.get('username')
+    if not username:
+        return redirect(url_for('login'))
+        
+    conn = get_db_connection()
+    if request.method == 'POST':
+        game_id = request.form.get('game_id')
+        description = request.form.get('description', '').strip()
+        
+        image_path = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '':
+                filename = secure_filename(file.filename)
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                image_path = f'/static/uploads/{filename}'
+        
+        if description and game_id:
+            conn.execute('''
+                INSERT INTO profiles (game_id, username, description, image_path)
+                VALUES (?, ?, ?, ?)
+            ''', (game_id, username, description, image_path))
+            conn.commit()
+            conn.close()
+            flash('Объявление успешно создано!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Заполните информацию о себе и выберите игру!', 'error')
+            
+    games = conn.execute('SELECT * FROM games ORDER BY name').fetchall()
+    conn.close()
+    current_theme = session.get('theme', 'light')
+    return render_template('create_profile.html', games=games, theme=current_theme)
+
+@app.route('/start_chat/<username>')
+def start_chat(username):
+    current_user = session.get('username')
+    if not current_user:
+        return redirect(url_for('login'))
+        
+    if current_user == username:
+        flash('Вы не можете написать самому себе!', 'error')
+        return redirect(url_for('index'))
+        
+    conn = get_db_connection()
+    chat = conn.execute('''
+        SELECT * FROM chats 
+        WHERE (user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?)
+    ''', (current_user, username, username, current_user)).fetchone()
+    
+    if chat:
+        chat_id = chat['id']
+    else:
+        full_time = datetime.datetime.now().strftime('%d.%m.%Y %H:%M')
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO chats (user1, user2, last_message_time) VALUES (?, ?, ?)',
+                       (current_user, username, full_time))
+        chat_id = cursor.lastrowid
+        conn.commit()
+        
+    conn.close()
+    return redirect(url_for('messages_page', chat_id=chat_id))
 
 @app.route('/messages')
 def messages_page():
@@ -243,13 +456,11 @@ def messages_page():
             
     conn.close()
     current_theme = session.get('theme', 'light')
-    
     return render_template('messages.html', 
                            chats=formatted_chats, 
                            active_chat_id=active_chat_id, 
                            active_messages=active_messages, 
                            active_partner=active_partner,
-                           logged_in_user=username,
                            theme=current_theme,
                            user_search=user_search)
 
@@ -298,7 +509,6 @@ def register():
         conn.close()
         
         send_bot_welcome(username)
-        
         session['username'] = username
         session['user_reg_date'] = reg_date
         
