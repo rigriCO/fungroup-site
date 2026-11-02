@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ current_lang }}">
 <head>
     <meta charset="UTF-8">
     <title>FunGr😊up — Поиск партнёров</title>
@@ -20,7 +20,7 @@
         .profile-dropdown { position: relative; display: inline-block; }
         .avatar-btn { width: 42px; height: 42px; border-radius: 50%; background: #ff9800; color: white; border: 2px solid #e0e0e0; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         
-        .dropdown-content { display: none; position: absolute; right: 0; top: 50px; background-color: var(--card-bg); min-width: 190px; box-shadow: 0px 8px 16px rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--border-color); z-index: 100; overflow: hidden; }
+        .dropdown-content { display: none; position: absolute; right: 0; top: 50px; background-color: var(--card-bg); min-width: 210px; box-shadow: 0px 8px 16px rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--border-color); z-index: 100; overflow: hidden; }
         .dropdown-content.show { display: block; }
         
         .dropdown-content a { color: var(--text-color); padding: 10px 16px; text-decoration: none; display: block; font-size: 14px; }
@@ -38,36 +38,41 @@
         .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 15px; font-size: 14px; }
         .stat-card h4 { margin-top: 0; margin-bottom: 8px; opacity: 0.7; font-size: 13px; text-transform: uppercase; }
         .stat-value { font-size: 18px; font-weight: bold; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid var(--border-color); padding: 12px; text-align: left; color: var(--text-color); }
-        tr:nth-child(even) { background-color: rgba(0,0,0,0.02); }
-        tr:hover { background-color: rgba(0, 123, 255, 0.05); cursor: pointer; }
     </style>
 </head>
-<body class="{{ theme }}">
+<body class="{{ session.get('theme', 'light') }}">
 
     <header>
-        <a href="/" class="logo">FunGr😊up</a>
+        <a href="/" class="logo">{{ t.logo }}</a>
         
         <div class="header-right">
-            <a href="/messages" class="nav-btn">СООБЩЕНИЯ</a>
+            <a href="/messages" class="nav-btn">{{ t.messages }}</a>
             
-            {% if logged_in_user %}
+            {% if session.get('username') %}
                 <div class="profile-dropdown">
-                    <button class="avatar-btn" onclick="toggleMenu(event)">{{ logged_in_user[0] | upper }}</button>
+                    <button class="avatar-btn" onclick="toggleMenu(event)">{{ session.get('username')[0] | upper }}</button>
                     <div id="profileMenu" class="dropdown-content">
-                        <a href="#"><strong>{{ logged_in_user }}</strong><br><small style="opacity: 0.6;">Профиль</small></a>
+                        <a href="#"><strong>{{ session.get('username') }}</strong><br><small style="opacity: 0.6;">
+                            {% if current_lang == 'en' %}Profile{% elif current_lang == 'uk' %}Профіль{% else %}Профиль{% endif %}
+                        </small></a>
                         <hr style="margin:0; border:none; border-top:1px solid var(--border-color);">
-                        <a href="/settings">Настройки</a>
-                        <a href="#">Язык: Русский 🇷🇺</a>
-                        <a href="/logout" onclick="return confirmExit(event)" style="color: #d9534f;">Выйти</a>
+                        <a href="/settings">{{ t.settings }}</a>
+                        
+                        <!-- Блок переключения языков -->
+                        <div style="padding: 8px 16px; font-size: 13px; opacity: 0.9; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+                            Lang: 
+                            <a href="/set_language/ru" style="display:inline; padding:0; color: {% if current_lang == 'ru' %}#007bff{% else %}var(--text-color){% endif %}; font-weight:bold;">RU</a> | 
+                            <a href="/set_language/en" style="display:inline; padding:0; color: {% if current_lang == 'en' %}#007bff{% else %}var(--text-color){% endif %}; font-weight:bold;">EN</a> | 
+                            <a href="/set_language/uk" style="display:inline; padding:0; color: {% if current_lang == 'uk' %}#007bff{% else %}var(--text-color){% endif %}; font-weight:bold;">UK</a>
+                        </div>
+
+                        <a href="/logout" onclick="return confirmExit(event)" style="color: #d9534f;">{{ t.logout }}</a>
                     </div>
                 </div>
             {% else %}
                 <div class="auth-links">
-                    <a href="/login" class="btn-auth btn-login">Войти</a>
-                    <a href="/register" class="btn-auth btn-reg">Регистрация</a>
+                    <a href="/login" class="btn-auth btn-login">{{ t.login }}</a>
+                    <a href="/register" class="btn-auth btn-reg">{{ t.register }}</a>
                 </div>
             {% endif %}
         </div>
